@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Pixelquark</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            align-self: center;
+
+            width: 100%;
+            min-height: 800px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script type="text/javascript">
+
+        var config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debuf: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var game = new Phaser.Game(config);
+
+        function preload() {
+            this.load.image('sky', 'assets/sky.png');
+            this.load.image('ground', 'assets/platform.png');
+            this.load.image('star', 'assets/star.png');
+            this.load.image('bomb', 'assets/bomb.png');
+            this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 });
+        }
+
+        var platforms;
+        var score = 0;
+        var scoreText;
+
+        function create() {
+            // Add image to scene (X, Y, key for image)
+            this.add.image(400, 300, 'sky');
+
+
+
+
+
+            // Adding the platforms in the scene
+            platforms = this.physics.add.staticGroup();
+
+            platforms.create(400, 568, 'ground').setScale(2).refreshBody();
+
+            platforms.create(600, 400, 'ground');
+            platforms.create(50, 250, 'ground');
+            platforms.create(750, 220, 'ground');
+
+            stars = this.physics.add.group({ key: 'star', repeat: 11, setXY: { x: 12, y: 0, stepX: 70 } });
+            stars.children.iterate(function (child) {
+                child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+            });
+
+            // Create the player object
+            player = this.physics.add.sprite(100, 450, 'dude');
+
+            bombs = this.physics.add.group();
+            // Adding the colision physics between elements
+            this.physics.add.collider(player, platforms);
+            this.physics.add.collider(stars, platforms);
+            this.physics.add.collider(bombs, platforms);
+
+            this.physics.add.overlap(player, bombs, hitBomb, null, this);
+            this.physics.add.overlap(player, stars, collectStar, null, this);
+            // Adding the little bouncing when PLAYER collide with ground
+            player.setBounce(0.2);
+            // Add collision with the canvas so the PLAYER doesn't fall into infinity
+            player.setCollideWorldBounds(true);
+
+            // Animations for PLAYER sprite
+            this.anims.create({
+                // Label
+                key: 'left',
+                // Frames assigned into the label
+                frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+                // Framerate of animation
+                frameRate: 10,
+                // Loop (-1 means loop while true)
+                repeat: -1
+            });
+
+            this.anims.create({
+                // Label
+                key: 'turn',
+                // Frames assigned into the label
+                frames: [{ key: 'dude', frame: 4 }],
+                // Framerate of animation
+                frameRate: 20,
+            });
+
+            this.anims.create({
+                // Label
+                key: 'right',
+                // Frames assigned into the label
+                frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+                // Framerate of animation
+                frameRate: 10,
+                // Loop (-1 means loop while true)
+                repeat: -1
+            });
+
+            // Movements functions for PLAYER sprite
+            cursors = this.input.keyboard.createCursorKeys();
+
+            function collectStar(player, star) {
+                star.disableBody(true, true);
+
+                score += 10;
+                scoreText.setText('Starpoints: ' + score);
+
+                if (stars.countActive(true) === 0) {
+                    stars.children.iterate(function (child) {
+                        child.enableBody(true, child.x, 0, true, true);
+                    });
+
+                    var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+
+                    var bomb = bombs.create(x, 16, 'bomb');
+                    bomb.setBounce(1);
+                    bomb.setCollideWorldBounds(true);
+                    bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+                }
+            }
+
+            scoreText = this.add.text(16, 16, 'Starpoints: 0', { fontSize: '32px', fill: '#FFF' });
+
+            function hitBomb(player, bomb) {
+                this.physics.pause();
+
+                player.setTint(0xff0000);
+                player.anims.play('turn');
+
+                gameOver = true;
+            }
+
+        }
+
+        function update() {
+            if (cursors.left.isDown) {
+                player.setVelocityX(-160);
+                player.anims.play('left', true);
+            }
+            else if (cursors.right.isDown) {
+                player.setVelocityX(160);
+                player.anims.play('right', true);
+            }
+            else {
+                player.setVelocityX(0);
+                player.anims.play('turn');
+            }
+
+            if (cursors.up.isDown && player.body.touching.down) {
+                player.setVelocityY(-330);
+            }
+            if (cursors.down.isDown && !player.body.touching.down) {
+                player.setVelocityY(330);
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>
